@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ArgoCD Service Connection</title>
+    <link rel="stylesheet" type="text/css" href="vss-web.css">
+    <style>
+        .form-section {
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .input-group input[type="text"],
+        .input-group input[type="password"],
+        .input-group input[type="url"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        
+        .input-group input:focus {
+            border-color: #0078d4;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .error-message {
+            color: #d13438;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #107c10;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .verify-button {
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .verify-button:hover {
+            background-color: #106ebe;
+        }
+        
+        .verify-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            margin-left: 10px;
+            color: #0078d4;
+        }
+        
+        .debug-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .debug-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #0078d4;
+        }
+        
+        .debug-content {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            background: #ffffff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background-color: #107c10; }
+        .status-error { background-color: #d13438; }
+        .status-warning { background-color: #ff8c00; }
+        .status-info { background-color: #0078d4; }
+    </style>
+</head>
+<body>
+    <div class="form-section">
+        <div class="input-group">
+            <label for="serverUrl">ArgoCD Server URL *</label>
+            <input type="url" id="serverUrl" name="url" placeholder="https://argocd.example.com" required>
+            <div class="help-text">Enter the URL of your ArgoCD server including https://</div>
+            <div class="error-message" id="serverUrl-error"></div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="input-group">
+            <label for="apiToken">API Token *</label>
+            <input type="password" id="apiToken" name="apitoken" placeholder="Enter your ArgoCD JWT token" required>
+            <div class="help-text">Generate an API token from ArgoCD UI or CLI: <code>argocd account generate-token</code></div>
+            <div class="error-message" id="apiToken-error"></div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="checkbox-group">
+            <input type="checkbox" id="skipCertValidation" name="skipCertificateValidation">
+            <label for="skipCertValidation">Skip certificate validation</label>
+        </div>
+        <div class="help-text">Enable this option for self-signed certificates. Not recommended for production.</div>
+    </div>
+
+    <div class="form-section">
+        <button type="button" class="verify-button" id="verifyConnection">Verify Connection & List Applications</button>
+        <span class="loading" id="verifyLoading">Testing connection...</span>
+        <div class="success-message" id="verify-success"></div>
+        <div class="error-message" id="verify-error"></div>
+    </div>
+
+    <!-- Debug sections -->
+    <div class="debug-section">
+        <div class="debug-title">🔍 Configuration Debug</div>
+        <div class="debug-content" id="configDebug">Ready to test...</div>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">🌐 Request Debug</div>
+        <div class="debug-content" id="requestDebug">No requests made yet...</div>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">📊 Response Debug</div>
+        <div class="debug-content" id="responseDebug">No responses received yet...</div>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">✅ Applications Found</div>
+        <div class="debug-content" id="applicationsDebug">No applications retrieved yet...</div>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">⚠️ Issues & Troubleshooting</div>
+        <div class="debug-content" id="issuesDebug">No issues detected...</div>
+    </div>
+
+    <script type="text/javascript" src="node_modules/azure-devops-extension-sdk/lib/SDK.min.js"></script>
+    <script type="text/javascript">
+        VSS.init({
+            explicitNotifyLoaded: true,
+            usePlatformStyles: true
+        });
+
+        VSS.ready(function () {
+            initializeForm();
+            updateConfigDebug();
+        });
+
+        function initializeForm() {
+            const verifyButton = document.getElementById('verifyConnection');
+            verifyButton.addEventListener('click', verifyConnection);
+
+            // Update debug info when form changes
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('input', updateConfigDebug);
+                input.addEventListener('blur', validateField);
+                input.addEventListener('input', clearFieldError);
+            });
+        }
+
+        function updateConfigDebug() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const apiToken = document.getElementById('apiToken').value.trim();
+            const skipCert = document.getElementById('skipCertValidation').checked;
+            
+            const configDebug = document.getElementById('configDebug');
+            const timestamp = new Date().toISOString();
+            
+            configDebug.textContent = `
+=== Configuration Status (${timestamp}) ===
+
+Server URL: ${serverUrl || '(empty)'}
+Valid URL Format: ${serverUrl ? isValidUrl(serverUrl) : false}
+API Token Length: ${apiToken.length} characters
+API Token Preview: ${apiToken ? apiToken.substring(0, 20) + '...' : '(empty)'}
+Skip Certificate Validation: ${skipCert}
+
+Expected Headers:
+- Authorization: Bearer ${apiToken ? apiToken.substring(0, 20) + '...' : '(empty)'}
+- Accept: application/json
+- Content-Type: application/json
+
+Test Endpoints:
+- Version (no auth): ${serverUrl}/api/version
+- Applications (auth): ${serverUrl}/api/v1/applications
+- Projects (auth): ${serverUrl}/api/v1/projects
+
+Form Validation:
+- Server URL Required: ${serverUrl ? '✅ Present' : '❌ Missing'}
+- Server URL Valid: ${serverUrl ? (isValidUrl(serverUrl) ? '✅ Valid' : '❌ Invalid') : 'N/A'}
+- API Token Required: ${apiToken ? '✅ Present' : '❌ Missing'}
+- Ready to Test: ${serverUrl && apiToken && isValidUrl(serverUrl) ? '✅ Yes' : '❌ No'}
+            `.trim();
+        }
+
+        function updateRequestDebug(requestInfo) {
+            const requestDebug = document.getElementById('requestDebug');
+            const timestamp = new Date().toISOString();
+            
+            requestDebug.textContent = `
+=== Request Debug (${timestamp}) ===
+
+${requestInfo}
+            `.trim();
+        }
+
+        function updateResponseDebug(responseInfo) {
+            const responseDebug = document.getElementById('responseDebug');
+            const timestamp = new Date().toISOString();
+            
+            responseDebug.textContent = `
+=== Response Debug (${timestamp}) ===
+
+${responseInfo}
+            `.trim();
+        }
+
+        function updateApplicationsDebug(applicationsInfo) {
+            const applicationsDebug = document.getElementById('applicationsDebug');
+            const timestamp = new Date().toISOString();
+            
+            applicationsDebug.textContent = `
+=== Applications Debug (${timestamp}) ===
+
+${applicationsInfo}
+            `.trim();
+        }
+
+        function updateIssuesDebug(issuesInfo) {
+            const issuesDebug = document.getElementById('issuesDebug');
+            const timestamp = new Date().toISOString();
+            
+            issuesDebug.textContent = `
+=== Issues & Troubleshooting (${timestamp}) ===
+
+${issuesInfo}
+            `.trim();
+        }
+
+        async function verifyConnection() {
+            const verifyButton = document.getElementById('verifyConnection');
+            const loadingSpinner = document.getElementById('verifyLoading');
+            const successElement = document.getElementById('verify-success');
+            const errorElement = document.getElementById('verify-error');
+
+            // Clear previous results
+            successElement.style.display = 'none';
+            errorElement.style.display = 'none';
+
+            // Validate form first
+            if (!validateForm()) {
+                errorElement.textContent = 'Please fix form validation errors first';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            // Show loading state
+            verifyButton.disabled = true;
+            loadingSpinner.style.display = 'inline';
+
+            try {
+                const formData = getFormData();
+                
+                updateRequestDebug('Starting comprehensive connection test...');
+                
+                // Test 1: Server connectivity (version endpoint - no auth)
+                const versionResult = await testVersionEndpoint(formData);
+                
+                // Test 2: Authentication test (applications endpoint - requires auth)
+                const appsResult = await testApplicationsEndpoint(formData);
+                
+                // Test 3: Projects test (additional auth validation)
+                const projectsResult = await testProjectsEndpoint(formData);
+                
+                // Analyze results
+                const analysis = analyzeResults(versionResult, appsResult, projectsResult);
+                
+                if (analysis.success) {
+                    successElement.innerHTML = `<span class="status-indicator status-success"></span>${analysis.message}`;
+                    successElement.style.display = 'block';
+                    updateIssuesDebug('✅ No issues detected! Connection and authentication working properly.');
+                } else {
+                    errorElement.innerHTML = `<span class="status-indicator status-error"></span>${analysis.message}`;
+                    errorElement.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Verification failed:', error);
+                errorElement.innerHTML = `<span class="status-indicator status-error"></span>Verification failed: ${error.message}`;
+                errorElement.style.display = 'block';
+                
+                updateIssuesDebug(`❌ Fatal Error:
+Error: ${error.message}
+Type: ${error.name}
+Stack: ${error.stack || 'No stack trace available'}
+
+Common Solutions:
+1. Check if ArgoCD server is accessible from your network
+2. Verify the server URL is correct and includes https://
+3. Ensure API token is valid and not expired
+4. Check if certificate validation should be disabled for self-signed certs`);
+            } finally {
+                verifyButton.disabled = false;
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        async function testVersionEndpoint(formData) {
+            const url = `${formData.url}/api/version`;
+            
+            updateRequestDebug(`Testing Version Endpoint:
+URL: ${url}
+Method: GET
+Headers: 
+  - Accept: application/json
+Expected: HTTP 200 (no authentication required)`);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const responseText = await response.text();
+                let parsedResponse = null;
+                
+                try {
+                    parsedResponse = JSON.parse(responseText);
+                } catch (e) {
+                    // Not JSON
+                }
+
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    response: parsedResponse,
+                    responseText: responseText,
+                    url: url
+                };
+
+                updateResponseDebug(`Version Endpoint Response:
+Status: ${response.status} ${response.statusText}
+Success: ${response.ok}
+Response Length: ${responseText.length} chars
+ArgoCD Version: ${parsedResponse?.Version || 'Not found'}
+Response Body: ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`);
+
+                return result;
+
+            } catch (error) {
+                const result = {
+                    success: false,
+                    error: error.message,
+                    url: url
+                };
+
+                updateResponseDebug(`Version Endpoint Error:
+URL: ${url}
+Error: ${error.message}
+Type: ${error.name}`);
+
+                return result;
+            }
+        }
+
+        async function testApplicationsEndpoint(formData) {
+            const url = `${formData.url}/api/v1/applications`;
+            const authHeader = `Bearer ${formData.apitoken}`;
+            
+            updateRequestDebug(`Testing Applications Endpoint:
+URL: ${url}
+Method: GET
+Headers: 
+  - Authorization: ${authHeader.substring(0, 30)}...
+  - Accept: application/json
+  - Content-Type: application/json
+Expected: HTTP 200 if token is valid, 401 if invalid`);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': authHeader,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const responseText = await response.text();
+                let parsedResponse = null;
+                
+                try {
+                    parsedResponse = JSON.parse(responseText);
+                } catch (e) {
+                    // Not JSON
+                }
+
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    response: parsedResponse,
+                    responseText: responseText,
+                    url: url
+                };
+
+                const appCount = parsedResponse?.items?.length || 0;
+                const appNames = parsedResponse?.items?.slice(0, 5).map(app => app.metadata?.name || 'Unknown') || [];
+
+                updateApplicationsDebug(`Applications Retrieved:
+Total Count: ${appCount}
+Status: ${response.status} ${response.statusText}
+Success: ${response.ok}
+
+First 5 Application Names:
+${appNames.map((name, i) => `${i + 1}. ${name}`).join('\n') || 'None found'}
+
+Response Details:
+Response Length: ${responseText.length} chars
+Has Items Array: ${parsedResponse?.items ? 'Yes' : 'No'}
+Sample Response: ${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}`);
+
+                return result;
+
+            } catch (error) {
+                const result = {
+                    success: false,
+                    error: error.message,
+                    url: url
+                };
+
+                updateApplicationsDebug(`Applications Endpoint Error:
+URL: ${url}
+Error: ${error.message}
+Type: ${error.name}
+Auth Header: ${authHeader.substring(0, 30)}...`);
+
+                return result;
+            }
+        }
+
+        async function testProjectsEndpoint(formData) {
+            const url = `${formData.url}/api/v1/projects`;
+            const authHeader = `Bearer ${formData.apitoken}`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': authHeader,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const responseText = await response.text();
+                let parsedResponse = null;
+                
+                try {
+                    parsedResponse = JSON.parse(responseText);
+                } catch (e) {
+                    // Not JSON
+                }
+
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    response: parsedResponse,
+                    responseText: responseText,
+                    url: url,
+                    projectCount: parsedResponse?.items?.length || 0
+                };
+
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message,
+                    url: url
+                };
+            }
+        }
+
+        function analyzeResults(versionResult, appsResult, projectsResult) {
+            let issues = [];
+            let success = false;
+            let message = '';
+
+            // Check version endpoint
+            if (!versionResult.success) {
+                issues.push(`❌ Server Connectivity Failed:
+  - Cannot reach ArgoCD server at version endpoint
+  - Error: ${versionResult.error || versionResult.status + ' ' + versionResult.statusText}
+  - Check server URL and network connectivity`);
+            } else {
+                issues.push(`✅ Server Connectivity OK:
+  - ArgoCD server is reachable
+  - Version: ${versionResult.response?.Version || 'Unknown'}`);
+            }
+
+            // Check applications endpoint (main test)
+            if (!appsResult.success) {
+                if (appsResult.status === 401) {
+                    issues.push(`❌ Authentication Failed:
+  - HTTP 401 Unauthorized
+  - API token is invalid, expired, or malformed
+  - Generate a new token: argocd account generate-token`);
+                } else if (appsResult.status === 403) {
+                    issues.push(`❌ Authorization Failed:
+  - HTTP 403 Forbidden
+  - API token is valid but lacks permissions
+  - User needs access to list applications`);
+                } else if (appsResult.error) {
+                    issues.push(`❌ Network/Connection Error:
+  - ${appsResult.error}
+  - Check network connectivity and server URL`);
+                } else {
+                    issues.push(`❌ Unexpected Response:
+  - HTTP ${appsResult.status} ${appsResult.statusText}
+  - Response: ${appsResult.responseText?.substring(0, 200) || 'Empty'}`);
+                }
+            } else {
+                const appCount = appsResult.response?.items?.length || 0;
+                success = true;
+                issues.push(`✅ Authentication Successful:
+  - HTTP ${appsResult.status} ${appsResult.statusText}
+  - Found ${appCount} applications
+  - API token is valid and working`);
+                
+                message = `SUCCESS! Found ${appCount} applications. Authentication working properly.`;
+            }
+
+            // Check projects endpoint
+            if (projectsResult.success) {
+                const projectCount = projectsResult.projectCount;
+                issues.push(`✅ Projects Access OK:
+  - Found ${projectCount} projects
+  - Additional permissions confirmed`);
+            }
+
+            // Update issues debug with all findings
+            updateIssuesDebug(issues.join('\n\n'));
+
+            return {
+                success: success,
+                message: message || 'Connection test failed. Check issues section for details.'
+            };
+        }
+
+        function validateForm() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const apiToken = document.getElementById('apiToken').value.trim();
+            
+            let valid = true;
+
+            if (!serverUrl) {
+                showFieldError('serverUrl', 'Server URL is required');
+                valid = false;
+            } else if (!isValidUrl(serverUrl)) {
+                showFieldError('serverUrl', 'Please enter a valid URL starting with https://');
+                valid = false;
+            }
+
+            if (!apiToken) {
+                showFieldError('apiToken', 'API Token is required');
+                valid = false;
+            }
+
+            return valid;
+        }
+
+        function validateField(event) {
+            const field = event.target;
+            const value = field.value.trim();
+            const fieldName = field.name;
+
+            clearFieldError(event);
+
+            if (!value && field.hasAttribute('required')) {
+                showFieldError(fieldName === 'url' ? 'serverUrl' : fieldName, 'This field is required');
+                return false;
+            }
+
+            if (fieldName === 'url' && value && !isValidUrl(value)) {
+                showFieldError('serverUrl', 'Please enter a valid URL starting with https://');
+                return false;
+            }
+
+            return true;
+        }
+
+        function clearFieldError(event) {
+            const field = event.target;
+            const fieldName = field.name === 'url' ? 'serverUrl' : field.name;
+            const errorElement = document.getElementById(fieldName + '-error');
+            if (errorElement) {
+                errorElement.style.display = 'none';
+                errorElement.textContent = '';
+            }
+            updateConfigDebug(); // Update debug when fields change
+        }
+
+        function showFieldError(fieldName, message) {
+            const errorElement = document.getElementById(fieldName + '-error');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
+        }
+
+        function isValidUrl(string) {
+            try {
+                const url = new URL(string);
+                return url.protocol === 'https:' || url.protocol === 'http:';
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function getFormData() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const apiToken = document.getElementById('apiToken').value.trim();
+            const skipCertValidation = document.getElementById('skipCertValidation').checked;
+            
+            return {
+                url: serverUrl,
+                apitoken: apiToken,
+                skipCertificateValidation: skipCertValidation
+            };
+        }
+
+        // Notify the host that the page is loaded
+        VSS.notifyLoadSucceeded();
+    </script>
+</body>
+</html>

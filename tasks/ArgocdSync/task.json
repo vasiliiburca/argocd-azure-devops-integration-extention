@@ -1,0 +1,180 @@
+{
+    "id": "a1b2c3d4-5e6f-7890-abcd-ef1234567890",
+    "name": "ArgocdSync",
+    "friendlyName": "ArgoCD Application Sync",
+    "description": "Trigger a synchronization of an ArgoCD application to deploy the latest changes",
+    "helpMarkDown": "This task connects to ArgoCD and triggers a sync operation on the specified application. [More Information](https://argo-cd.readthedocs.io/en/stable/user-guide/sync/)",
+    "category": "Deploy",
+    "author": "vburca",
+    "demands": [],
+    "version": {
+        "Major": "1",
+        "Minor": "0",
+        "Patch": "18"
+    },
+    "minimumAgentVersion": "2.144.0",
+    "instanceNameFormat": "ArgoCD Sync: $(applicationName)",
+    "groups": [
+        {
+            "name": "connection",
+            "displayName": "Connection",
+            "isExpanded": true
+        },
+        {
+            "name": "application",
+            "displayName": "Application",
+            "isExpanded": true
+        },
+        {
+            "name": "sync",
+            "displayName": "Sync Options",
+            "isExpanded": false
+        },
+        {
+            "name": "advanced",
+            "displayName": "Advanced",
+            "isExpanded": false
+        }
+    ],
+    "inputs": [
+        {
+            "name": "argoCDConnection",
+            "type": "connectedService:argocd",
+            "label": "ArgoCD Service Connection",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Select the ArgoCD service connection. Configure this in Project Settings > Service Connections.",
+            "groupName": "connection"
+        },
+        {
+            "name": "applicationName",
+            "type": "pickList",
+            "label": "Application Name",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "The ArgoCD application to synchronize. The dropdown is populated from your ArgoCD server.",
+            "groupName": "application",
+            "properties": {
+                "EditableOptions": "True"
+            }
+        },
+        {
+            "name": "project",
+            "type": "pickList",
+            "label": "Project (Optional)",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "ArgoCD project name. If specified, the application must belong to this project.",
+            "groupName": "application",
+            "properties": {
+                "EditableOptions": "True"
+            }
+        },
+        {
+            "name": "syncPolicy",
+            "type": "pickList",
+            "label": "Sync Policy",
+            "defaultValue": "sync",
+            "required": true,
+            "helpMarkDown": "Choose the sync operation to perform",
+            "groupName": "sync",
+            "options": {
+                "sync": "Sync (deploy changes)",
+                "refresh": "Refresh (update status only)",
+                "hard-refresh": "Hard Refresh (force status update)"
+            }
+        },
+        {
+            "name": "waitForSync",
+            "type": "boolean",
+            "label": "Wait for sync completion",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "Wait for the sync operation to complete before continuing. Recommended for production deployments.",
+            "groupName": "sync"
+        },
+        {
+            "name": "syncTimeout",
+            "type": "string",
+            "label": "Sync Timeout (seconds)",
+            "defaultValue": "300",
+            "required": false,
+            "helpMarkDown": "Maximum time to wait for sync completion. Only applies if 'Wait for sync completion' is enabled.",
+            "groupName": "sync",
+            "visibleRule": "waitForSync = true"
+        },
+        {
+            "name": "revision",
+            "type": "string",
+            "label": "Revision (Optional)",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Specific git revision to sync to (commit SHA, branch, or tag). Leave empty to sync to HEAD.",
+            "groupName": "sync"
+        },
+        {
+            "name": "strategy",
+            "type": "pickList",
+            "label": "Sync Strategy",
+            "defaultValue": "apply",
+            "required": false,
+            "helpMarkDown": "Strategy to use for sync operation",
+            "groupName": "advanced",
+            "options": {
+                "apply": "Apply (default)",
+                "hook": "Hook",
+                "force": "Force"
+            }
+        },
+        {
+            "name": "prune",
+            "type": "boolean",
+            "label": "Prune resources",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Remove resources that are no longer defined in git",
+            "groupName": "advanced"
+        },
+        {
+            "name": "dryRun",
+            "type": "boolean",
+            "label": "Dry Run",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Preview sync without making changes",
+            "groupName": "advanced"
+        },
+        {
+            "name": "skipSecretValidation",
+            "type": "boolean",
+            "label": "Skip Certificate Validation",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Skip TLS certificate validation. Use for self-signed certificates.",
+            "groupName": "advanced"
+        }
+    ],
+    "dataSourceBindings": [
+        {
+            "target": "applicationName",
+            "endpointId": "$(argoCDConnection)",
+            "dataSourceName": "ArgoCDApplications"
+        },
+        {
+            "target": "project", 
+            "endpointId": "$(argoCDConnection)",
+            "dataSourceName": "ArgoCDProjects"
+        }
+    ],
+    "execution": {
+        "Node10": {
+            "target": "index.js"
+        },
+        "Node16": {
+            "target": "index.js"
+        },
+        "Node20": {
+            "target": "index.js"
+        }
+    }
+}

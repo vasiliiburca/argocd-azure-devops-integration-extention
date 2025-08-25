@@ -1,0 +1,8 @@
+{
+  "name": "argocd-sync-task",
+  "version": "1.0.17",
+  "dependencies": {
+    "azure-pipelines-task-lib": "^4.1.0",
+    "axios": "^1.6.0"
+  }
+}

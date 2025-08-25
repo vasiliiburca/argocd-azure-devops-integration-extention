@@ -8,7 +8,14 @@ lerna-debug.log*
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
+.claude
+.cursor
+.taskmaster
+.env.example
+.mcp.json
+PRD.MD
+CLAUDE.MD
+/Users/vasileburca/CODE/MAIB/code/argocd-azure-devops-integration-extention/.env.example
 # Runtime data
 pids
 *.pid
@@ -49,10 +56,9 @@ web_modules/
 
 # Optional npm cache directory
 .npm
-
 # Optional eslint cache
 .eslintcache
-
+*.vsix
 # Optional stylelint cache
 .stylelintcache
 
@@ -137,3 +143,20 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+dev-debug.log
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+
+# Task files
+# tasks.json
+# tasks/ 
