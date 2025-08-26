@@ -1,12 +1,15 @@
 {
   "name": "argocd-azure-devops-extension",
-  "version": "1.0.15",
+  "version": "1.0.21",
   "description": "Azure DevOps extension for ArgoCD integration",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "clean": "rimraf dist",
-    "package": "tfx extension create --manifest-globs vss-extension.json --output-path ./out/"
+    "build": "node scripts/build.js",
+    "compile": "tsc",
+    "clean": "rimraf dist tasks/ArgocdSync/index.js tasks/ArgocdSync/common tasks/ArgocdSync/node_modules",
+    "package": "tfx extension create --manifest-globs vss-extension.json --output-path ./out/",
+    "dev": "npm run build && npm run package",
+    "full-clean": "rimraf dist out tasks/ArgocdSync/index.js tasks/ArgocdSync/common tasks/ArgocdSync/node_modules"
   },
   "devDependencies": {
     "@types/node": "^16.18.0",

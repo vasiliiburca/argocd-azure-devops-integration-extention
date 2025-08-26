@@ -276,10 +276,12 @@ class ArgoCDServiceProvider {
      * Get service connection credentials from Azure DevOps
      */
     getServiceConnectionCredentials() {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
+        console.log(`📋 Getting credentials for service connection: ${this.connectionName}`);
         const endpointAuth = tl.getEndpointAuthorization(this.connectionName, false);
-        const endpointData = tl.getEndpointDataParameter(this.connectionName, '', false);
         const serverUrl = tl.getEndpointUrl(this.connectionName, false);
+        console.log(`📋 Server URL: ${serverUrl || 'NOT FOUND'}`);
+        console.log(`📋 Auth scheme: ${(endpointAuth === null || endpointAuth === void 0 ? void 0 : endpointAuth.scheme) || 'NOT FOUND'}`);
         if (!serverUrl) {
             throw new Error('ArgoCD server URL not found in service connection');
         }
@@ -287,19 +289,45 @@ class ArgoCDServiceProvider {
             throw new Error('Authentication information not found in service connection');
         }
         const authScheme = endpointAuth.scheme;
-        const skipCertValidation = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false) === 'true';
+        // Check for skipCertificateValidation in multiple places
+        let skipCertValidation = false;
+        // First, try to get it from endpoint data parameters
+        try {
+            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
+            if (certParam) {
+                skipCertValidation = certParam === 'true';
+                console.log(`📋 Certificate validation setting found: ${skipCertValidation}`);
+            }
+        }
+        catch (error) {
+            // Try to get it from auth parameters as fallback
+            try {
+                const authCertParam = (_a = endpointAuth.parameters) === null || _a === void 0 ? void 0 : _a['skipCertificateValidation'];
+                if (authCertParam !== undefined) {
+                    skipCertValidation = authCertParam === 'true';
+                    console.log(`📋 Certificate validation from auth params: ${skipCertValidation}`);
+                }
+            }
+            catch (authError) {
+                console.log('📋 No certificate validation setting found, using default: false');
+            }
+        }
         let credentials = {
             serverUrl: serverUrl,
             authScheme: authScheme,
             skipCertificateValidation: skipCertValidation
         };
         if (authScheme === 'Token') {
-            credentials.apiToken = (_a = endpointAuth.parameters) === null || _a === void 0 ? void 0 : _a['apitoken'];
+            credentials.apiToken = (_b = endpointAuth.parameters) === null || _b === void 0 ? void 0 : _b['apitoken'];
+            console.log(`📋 API Token present: ${credentials.apiToken ? 'YES' : 'NO'}`);
         }
         else if (authScheme === 'UsernamePassword') {
-            credentials.username = (_b = endpointAuth.parameters) === null || _b === void 0 ? void 0 : _b['username'];
-            credentials.password = (_c = endpointAuth.parameters) === null || _c === void 0 ? void 0 : _c['password'];
+            credentials.username = (_c = endpointAuth.parameters) === null || _c === void 0 ? void 0 : _c['username'];
+            credentials.password = (_d = endpointAuth.parameters) === null || _d === void 0 ? void 0 : _d['password'];
+            console.log(`📋 Username: ${credentials.username || 'NOT FOUND'}`);
+            console.log(`📋 Password present: ${credentials.password ? 'YES' : 'NO'}`);
         }
+        console.log(`📋 Final credentials configured with scheme: ${credentials.authScheme}`);
         return credentials;
     }
     /**

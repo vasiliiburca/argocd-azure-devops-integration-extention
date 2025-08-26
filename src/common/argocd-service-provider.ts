@@ -310,9 +310,13 @@ export class ArgoCDServiceProvider {
      * Get service connection credentials from Azure DevOps
      */
     private getServiceConnectionCredentials(): ArgoCDCredentials {
+        console.log(`📋 Getting credentials for service connection: ${this.connectionName}`);
+        
         const endpointAuth = tl.getEndpointAuthorization(this.connectionName, false);
-        const endpointData = tl.getEndpointDataParameter(this.connectionName, '', false);
         const serverUrl = tl.getEndpointUrl(this.connectionName, false);
+
+        console.log(`📋 Server URL: ${serverUrl || 'NOT FOUND'}`);
+        console.log(`📋 Auth scheme: ${endpointAuth?.scheme || 'NOT FOUND'}`);
 
         if (!serverUrl) {
             throw new Error('ArgoCD server URL not found in service connection');
@@ -323,7 +327,29 @@ export class ArgoCDServiceProvider {
         }
 
         const authScheme = endpointAuth.scheme;
-        const skipCertValidation = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false) === 'true';
+        
+        // Check for skipCertificateValidation in multiple places
+        let skipCertValidation = false;
+        
+        // First, try to get it from endpoint data parameters
+        try {
+            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
+            if (certParam) {
+                skipCertValidation = certParam === 'true';
+                console.log(`📋 Certificate validation setting found: ${skipCertValidation}`);
+            }
+        } catch (error) {
+            // Try to get it from auth parameters as fallback
+            try {
+                const authCertParam = endpointAuth.parameters?.['skipCertificateValidation'];
+                if (authCertParam !== undefined) {
+                    skipCertValidation = authCertParam === 'true';
+                    console.log(`📋 Certificate validation from auth params: ${skipCertValidation}`);
+                }
+            } catch (authError) {
+                console.log('📋 No certificate validation setting found, using default: false');
+            }
+        }
 
         let credentials: ArgoCDCredentials = {
             serverUrl: serverUrl,
@@ -333,11 +359,15 @@ export class ArgoCDServiceProvider {
 
         if (authScheme === 'Token') {
             credentials.apiToken = endpointAuth.parameters?.['apitoken'];
+            console.log(`📋 API Token present: ${credentials.apiToken ? 'YES' : 'NO'}`);
         } else if (authScheme === 'UsernamePassword') {
             credentials.username = endpointAuth.parameters?.['username'];
             credentials.password = endpointAuth.parameters?.['password'];
+            console.log(`📋 Username: ${credentials.username || 'NOT FOUND'}`);
+            console.log(`📋 Password present: ${credentials.password ? 'YES' : 'NO'}`);
         }
 
+        console.log(`📋 Final credentials configured with scheme: ${credentials.authScheme}`);
         return credentials;
     }
 

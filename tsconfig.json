@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2018", "DOM"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,14 +15,13 @@
     "sourceMap": true
   },
   "include": [
-    "tasks/**/*",
-    "common/**/*",
-    "service-endpoint/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "out",
+    "tasks",
     "**/*.test.ts"
   ]
 }

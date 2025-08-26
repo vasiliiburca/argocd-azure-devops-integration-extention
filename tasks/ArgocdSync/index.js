@@ -59,7 +59,7 @@ async function run() {
         console.log(`   Prune: ${prune}`);
         console.log(`   Dry Run: ${dryRun}`);
         // Import the ArgoCD service provider
-        const commonPath = path.resolve(__dirname, '../../common');
+        const commonPath = path.resolve(__dirname, 'common');
         const { createArgoCDServiceProvider } = await (_a = path.join(commonPath, 'argocd-service-provider'), Promise.resolve().then(() => __importStar(require(_a))));
         // Initialize ArgoCD service provider
         console.log('🔗 Initializing ArgoCD connection...');

@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "argocd-integration",
-  "version": "1.0.18",
+  "version": "1.0.21",
   "name": "ArgoCD Integration",
   "description": "Azure DevOps extension for seamless ArgoCD integration, providing GitOps continuous delivery from Azure Pipelines to Kubernetes clusters",
   "publisher": "vburca",
