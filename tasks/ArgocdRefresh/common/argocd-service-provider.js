@@ -132,15 +132,22 @@ class ArgoCDServiceProvider {
                 return [];
             }
             return response.data.items.map((app) => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0;
                 return ({
                     name: ((_a = app.metadata) === null || _a === void 0 ? void 0 : _a.name) || 'Unknown',
                     project: ((_b = app.spec) === null || _b === void 0 ? void 0 : _b.project) || 'default',
                     namespace: (_d = (_c = app.spec) === null || _c === void 0 ? void 0 : _c.destination) === null || _d === void 0 ? void 0 : _d.namespace,
                     server: (_f = (_e = app.spec) === null || _e === void 0 ? void 0 : _e.destination) === null || _f === void 0 ? void 0 : _f.server,
                     syncStatus: ((_h = (_g = app.status) === null || _g === void 0 ? void 0 : _g.sync) === null || _h === void 0 ? void 0 : _h.status) || 'Unknown',
-                    healthStatus: ((_k = (_j = app.status) === null || _j === void 0 ? void 0 : _j.health) === null || _k === void 0 ? void 0 : _k.status) || 'Unknown',
-                    revision: (_m = (_l = app.status) === null || _l === void 0 ? void 0 : _l.sync) === null || _m === void 0 ? void 0 : _m.revision
+                    lastSyncStatus: ((_k = (_j = app.status) === null || _j === void 0 ? void 0 : _j.operationState) === null || _k === void 0 ? void 0 : _k.phase) === 'Succeeded' ? 'Synced' :
+                        ((_m = (_l = app.status) === null || _l === void 0 ? void 0 : _l.operationState) === null || _m === void 0 ? void 0 : _m.phase) === 'Failed' ? 'Failed' :
+                            ((_p = (_o = app.status) === null || _o === void 0 ? void 0 : _o.operationState) === null || _p === void 0 ? void 0 : _p.phase) === 'Error' ? 'Error' :
+                                ((_s = (_r = (_q = app.status) === null || _q === void 0 ? void 0 : _q.operationState) === null || _r === void 0 ? void 0 : _r.syncResult) === null || _s === void 0 ? void 0 : _s.status) ||
+                                    ((_u = (_t = app.status) === null || _t === void 0 ? void 0 : _t.sync) === null || _u === void 0 ? void 0 : _u.status) || 'Unknown',
+                    healthStatus: ((_w = (_v = app.status) === null || _v === void 0 ? void 0 : _v.health) === null || _w === void 0 ? void 0 : _w.status) || 'Unknown',
+                    revision: (_y = (_x = app.status) === null || _x === void 0 ? void 0 : _x.sync) === null || _y === void 0 ? void 0 : _y.revision,
+                    operationState: (_z = app.status) === null || _z === void 0 ? void 0 : _z.operationState,
+                    conditions: ((_0 = app.status) === null || _0 === void 0 ? void 0 : _0.conditions) || []
                 });
             });
         }
@@ -178,28 +185,39 @@ class ArgoCDServiceProvider {
      * Get detailed information about a specific application
      */
     async getApplication(applicationName, project) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2;
         if (!this.httpClient) {
             throw new Error('Service provider not initialized');
         }
         try {
-            const url = project
-                ? `/api/v1/applications/${project}/${applicationName}`
-                : `/api/v1/applications/${applicationName}`;
+            // ArgoCD API format is always /api/v1/applications/{appName}
+            // Project filtering is done by checking the application spec
+            const url = `/api/v1/applications/${applicationName}`;
             const response = await this.httpClient.get(url);
             const app = response.data;
+            // If project is specified, verify the application belongs to that project
+            if (project && ((_a = app.spec) === null || _a === void 0 ? void 0 : _a.project) !== project) {
+                throw new Error(`Application '${applicationName}' not found in project '${project}'`);
+            }
             return {
-                name: ((_a = app.metadata) === null || _a === void 0 ? void 0 : _a.name) || applicationName,
-                project: ((_b = app.spec) === null || _b === void 0 ? void 0 : _b.project) || 'default',
-                namespace: (_d = (_c = app.spec) === null || _c === void 0 ? void 0 : _c.destination) === null || _d === void 0 ? void 0 : _d.namespace,
-                server: (_f = (_e = app.spec) === null || _e === void 0 ? void 0 : _e.destination) === null || _f === void 0 ? void 0 : _f.server,
-                syncStatus: ((_h = (_g = app.status) === null || _g === void 0 ? void 0 : _g.sync) === null || _h === void 0 ? void 0 : _h.status) || 'Unknown',
-                healthStatus: ((_k = (_j = app.status) === null || _j === void 0 ? void 0 : _j.health) === null || _k === void 0 ? void 0 : _k.status) || 'Unknown',
-                revision: (_m = (_l = app.status) === null || _l === void 0 ? void 0 : _l.sync) === null || _m === void 0 ? void 0 : _m.revision
+                name: ((_b = app.metadata) === null || _b === void 0 ? void 0 : _b.name) || applicationName,
+                project: ((_c = app.spec) === null || _c === void 0 ? void 0 : _c.project) || 'default',
+                namespace: (_e = (_d = app.spec) === null || _d === void 0 ? void 0 : _d.destination) === null || _e === void 0 ? void 0 : _e.namespace,
+                server: (_g = (_f = app.spec) === null || _f === void 0 ? void 0 : _f.destination) === null || _g === void 0 ? void 0 : _g.server,
+                syncStatus: ((_j = (_h = app.status) === null || _h === void 0 ? void 0 : _h.sync) === null || _j === void 0 ? void 0 : _j.status) || 'Unknown',
+                lastSyncStatus: ((_l = (_k = app.status) === null || _k === void 0 ? void 0 : _k.operationState) === null || _l === void 0 ? void 0 : _l.phase) === 'Succeeded' ? 'Synced' :
+                    ((_o = (_m = app.status) === null || _m === void 0 ? void 0 : _m.operationState) === null || _o === void 0 ? void 0 : _o.phase) === 'Failed' ? 'Failed' :
+                        ((_q = (_p = app.status) === null || _p === void 0 ? void 0 : _p.operationState) === null || _q === void 0 ? void 0 : _q.phase) === 'Error' ? 'Error' :
+                            ((_t = (_s = (_r = app.status) === null || _r === void 0 ? void 0 : _r.operationState) === null || _s === void 0 ? void 0 : _s.syncResult) === null || _t === void 0 ? void 0 : _t.status) ||
+                                ((_v = (_u = app.status) === null || _u === void 0 ? void 0 : _u.sync) === null || _v === void 0 ? void 0 : _v.status) || 'Unknown',
+                healthStatus: ((_x = (_w = app.status) === null || _w === void 0 ? void 0 : _w.health) === null || _x === void 0 ? void 0 : _x.status) || 'Unknown',
+                revision: (_z = (_y = app.status) === null || _y === void 0 ? void 0 : _y.sync) === null || _z === void 0 ? void 0 : _z.revision,
+                operationState: (_0 = app.status) === null || _0 === void 0 ? void 0 : _0.operationState,
+                conditions: ((_1 = app.status) === null || _1 === void 0 ? void 0 : _1.conditions) || []
             };
         }
         catch (error) {
-            if (axios_1.default.isAxiosError(error) && ((_o = error.response) === null || _o === void 0 ? void 0 : _o.status) === 404) {
+            if (axios_1.default.isAxiosError(error) && ((_2 = error.response) === null || _2 === void 0 ? void 0 : _2.status) === 404) {
                 throw new Error(`Application '${applicationName}' not found`);
             }
             throw new Error(`Failed to get application '${applicationName}': ${this.getErrorMessage(error)}`);
@@ -252,7 +270,7 @@ class ArgoCDServiceProvider {
     async getApplicationNames(project) {
         try {
             const applications = await this.getApplications(project);
-            return applications.map(app => app.name).sort();
+            return applications.map(app => app.name).sort((a, b) => a.localeCompare(b));
         }
         catch (error) {
             console.warn(`Failed to get application names: ${this.getErrorMessage(error)}`);
@@ -265,7 +283,7 @@ class ArgoCDServiceProvider {
     async getProjectNames() {
         try {
             const projects = await this.getProjects();
-            return projects.map(project => project.name).sort();
+            return projects.map(project => project.name).sort((a, b) => a.localeCompare(b));
         }
         catch (error) {
             console.warn(`Failed to get project names: ${this.getErrorMessage(error)}`);
@@ -276,12 +294,10 @@ class ArgoCDServiceProvider {
      * Get service connection credentials from Azure DevOps
      */
     getServiceConnectionCredentials() {
-        var _a, _b, _c, _d;
-        console.log(`📋 Getting credentials for service connection: ${this.connectionName}`);
+        var _a, _b, _c;
+        console.log(`📋 Configuring service connection: ${this.connectionName}`);
         const endpointAuth = tl.getEndpointAuthorization(this.connectionName, false);
         const serverUrl = tl.getEndpointUrl(this.connectionName, false);
-        console.log(`📋 Server URL: ${serverUrl || 'NOT FOUND'}`);
-        console.log(`📋 Auth scheme: ${(endpointAuth === null || endpointAuth === void 0 ? void 0 : endpointAuth.scheme) || 'NOT FOUND'}`);
         if (!serverUrl) {
             throw new Error('ArgoCD server URL not found in service connection');
         }
@@ -289,46 +305,42 @@ class ArgoCDServiceProvider {
             throw new Error('Authentication information not found in service connection');
         }
         const authScheme = endpointAuth.scheme;
-        // Check for skipCertificateValidation in multiple places
-        let skipCertValidation = false;
-        // First, try to get it from endpoint data parameters
-        try {
-            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
-            if (certParam) {
-                skipCertValidation = certParam === 'true';
-                console.log(`📋 Certificate validation setting found: ${skipCertValidation}`);
-            }
-        }
-        catch (error) {
-            // Try to get it from auth parameters as fallback
-            try {
-                const authCertParam = (_a = endpointAuth.parameters) === null || _a === void 0 ? void 0 : _a['skipCertificateValidation'];
-                if (authCertParam !== undefined) {
-                    skipCertValidation = authCertParam === 'true';
-                    console.log(`📋 Certificate validation from auth params: ${skipCertValidation}`);
-                }
-            }
-            catch (authError) {
-                console.log('📋 No certificate validation setting found, using default: false');
-            }
-        }
+        const skipCertValidation = this.getCertificateValidationSetting(endpointAuth);
         let credentials = {
             serverUrl: serverUrl,
             authScheme: authScheme,
             skipCertificateValidation: skipCertValidation
         };
         if (authScheme === 'Token') {
-            credentials.apiToken = (_b = endpointAuth.parameters) === null || _b === void 0 ? void 0 : _b['apitoken'];
-            console.log(`📋 API Token present: ${credentials.apiToken ? 'YES' : 'NO'}`);
+            credentials.apiToken = (_a = endpointAuth.parameters) === null || _a === void 0 ? void 0 : _a['apitoken'];
         }
         else if (authScheme === 'UsernamePassword') {
-            credentials.username = (_c = endpointAuth.parameters) === null || _c === void 0 ? void 0 : _c['username'];
-            credentials.password = (_d = endpointAuth.parameters) === null || _d === void 0 ? void 0 : _d['password'];
-            console.log(`📋 Username: ${credentials.username || 'NOT FOUND'}`);
-            console.log(`📋 Password present: ${credentials.password ? 'YES' : 'NO'}`);
+            credentials.username = (_b = endpointAuth.parameters) === null || _b === void 0 ? void 0 : _b['username'];
+            credentials.password = (_c = endpointAuth.parameters) === null || _c === void 0 ? void 0 : _c['password'];
         }
-        console.log(`📋 Final credentials configured with scheme: ${credentials.authScheme}`);
+        console.log(`📋 Authentication configured with scheme: ${credentials.authScheme}`);
         return credentials;
+    }
+    /**
+     * Get certificate validation setting from endpoint configuration
+     */
+    getCertificateValidationSetting(endpointAuth) {
+        var _a;
+        // First, try to get it from endpoint data parameters
+        try {
+            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
+            if (certParam !== null && certParam !== undefined) {
+                return certParam === 'true';
+            }
+        }
+        catch (_b) {
+            // Try to get it from auth parameters as fallback
+            const authCertParam = (_a = endpointAuth.parameters) === null || _a === void 0 ? void 0 : _a['skipCertificateValidation'];
+            if (authCertParam !== undefined && authCertParam !== null) {
+                return authCertParam === 'true';
+            }
+        }
+        return false;
     }
     /**
      * Validate that we have the required credentials

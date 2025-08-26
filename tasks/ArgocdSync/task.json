@@ -10,10 +10,11 @@
     "version": {
         "Major": "1",
         "Minor": "0",
-        "Patch": "21"
+        "Patch": "29"
     },
     "minimumAgentVersion": "2.144.0",
     "instanceNameFormat": "ArgoCD Sync: $(applicationName)",
+    "icon": "icon.png",
     "groups": [
         {
             "name": "connection",
@@ -39,7 +40,7 @@
     "inputs": [
         {
             "name": "argoCDConnection",
-            "type": "connectedService:argocd",
+            "type": "connectedService:vburca-argocd",
             "label": "ArgoCD Service Connection",
             "defaultValue": "",
             "required": true,
@@ -47,24 +48,24 @@
             "groupName": "connection"
         },
         {
-            "name": "applicationName",
+            "name": "project",
             "type": "pickList",
-            "label": "Application Name",
+            "label": "Project (Optional)",
             "defaultValue": "",
-            "required": true,
-            "helpMarkDown": "The ArgoCD application to synchronize. The dropdown is populated from your ArgoCD server.",
+            "required": false,
+            "helpMarkDown": "ArgoCD project name. If specified, only applications from this project will be shown in the Application dropdown.",
             "groupName": "application",
             "properties": {
                 "EditableOptions": "True"
             }
         },
         {
-            "name": "project",
+            "name": "applicationName",
             "type": "pickList",
-            "label": "Project (Optional)",
+            "label": "Application Name",
             "defaultValue": "",
-            "required": false,
-            "helpMarkDown": "ArgoCD project name. If specified, the application must belong to this project.",
+            "required": true,
+            "helpMarkDown": "The ArgoCD application to synchronize. The dropdown is populated based on the selected project.",
             "groupName": "application",
             "properties": {
                 "EditableOptions": "True"
@@ -100,6 +101,25 @@
             "defaultValue": "300",
             "required": false,
             "helpMarkDown": "Maximum time to wait for sync completion. Only applies if 'Wait for sync completion' is enabled.",
+            "groupName": "sync",
+            "visibleRule": "waitForSync = true"
+        },
+        {
+            "name": "terminateRunningSync",
+            "type": "boolean",
+            "label": "Terminate running sync before starting",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "If a sync operation is already running, terminate it before starting a new one. Use with caution in production environments.",
+            "groupName": "sync"
+        },
+        {
+            "name": "failOnTimeout",
+            "type": "boolean",
+            "label": "Fail task on timeout",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "If enabled, the task will fail when the sync timeout is reached. If disabled, the task will complete with a warning.",
             "groupName": "sync",
             "visibleRule": "waitForSync = true"
         },
@@ -143,22 +163,16 @@
             "required": false,
             "helpMarkDown": "Preview sync without making changes",
             "groupName": "advanced"
-        },
-        {
-            "name": "skipSecretValidation",
-            "type": "boolean",
-            "label": "Skip Certificate Validation",
-            "defaultValue": "false",
-            "required": false,
-            "helpMarkDown": "Skip TLS certificate validation. Use for self-signed certificates.",
-            "groupName": "advanced"
         }
     ],
     "dataSourceBindings": [
         {
             "target": "applicationName",
             "endpointId": "$(argoCDConnection)",
-            "dataSourceName": "ArgoCDApplications"
+            "dataSourceName": "ArgoCDApplications",
+            "parameters": {
+                "project": "$(project)"
+            }
         },
         {
             "target": "project", 

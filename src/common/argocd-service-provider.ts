@@ -14,8 +14,18 @@ export interface ArgoCDApplication {
     namespace?: string;
     server?: string;
     syncStatus: string;
+    lastSyncStatus?: string;
     healthStatus: string;
     revision?: string;
+    operationState?: object;
+    conditions?: Array<{
+        type: string;
+        status: string;
+        severity?: string;
+        message: string;
+        reason?: string;
+        lastTransitionTime?: string;
+    }>;
 }
 
 export interface ArgoCDProject {
@@ -168,8 +178,15 @@ export class ArgoCDServiceProvider {
                 namespace: app.spec?.destination?.namespace,
                 server: app.spec?.destination?.server,
                 syncStatus: app.status?.sync?.status || 'Unknown',
+                lastSyncStatus: app.status?.operationState?.phase === 'Succeeded' ? 'Synced' : 
+                              app.status?.operationState?.phase === 'Failed' ? 'Failed' :
+                              app.status?.operationState?.phase === 'Error' ? 'Error' :
+                              app.status?.operationState?.syncResult?.status || 
+                              app.status?.sync?.status || 'Unknown',
                 healthStatus: app.status?.health?.status || 'Unknown',
-                revision: app.status?.sync?.revision
+                revision: app.status?.sync?.revision,
+                operationState: app.status?.operationState,
+                conditions: app.status?.conditions || []
             }));
         } catch (error) {
             throw new Error(`Failed to get applications: ${this.getErrorMessage(error)}`);
@@ -211,12 +228,17 @@ export class ArgoCDServiceProvider {
         }
 
         try {
-            const url = project 
-                ? `/api/v1/applications/${project}/${applicationName}`
-                : `/api/v1/applications/${applicationName}`;
+            // ArgoCD API format is always /api/v1/applications/{appName}
+            // Project filtering is done by checking the application spec
+            const url = `/api/v1/applications/${applicationName}`;
             
             const response = await this.httpClient.get(url);
             const app = response.data;
+            
+            // If project is specified, verify the application belongs to that project
+            if (project && app.spec?.project !== project) {
+                throw new Error(`Application '${applicationName}' not found in project '${project}'`);
+            }
             
             return {
                 name: app.metadata?.name || applicationName,
@@ -224,8 +246,15 @@ export class ArgoCDServiceProvider {
                 namespace: app.spec?.destination?.namespace,
                 server: app.spec?.destination?.server,
                 syncStatus: app.status?.sync?.status || 'Unknown',
+                lastSyncStatus: app.status?.operationState?.phase === 'Succeeded' ? 'Synced' : 
+                              app.status?.operationState?.phase === 'Failed' ? 'Failed' :
+                              app.status?.operationState?.phase === 'Error' ? 'Error' :
+                              app.status?.operationState?.syncResult?.status || 
+                              app.status?.sync?.status || 'Unknown',
                 healthStatus: app.status?.health?.status || 'Unknown',
-                revision: app.status?.sync?.revision
+                revision: app.status?.sync?.revision,
+                operationState: app.status?.operationState,
+                conditions: app.status?.conditions || []
             };
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -286,7 +315,7 @@ export class ArgoCDServiceProvider {
     public async getApplicationNames(project?: string): Promise<string[]> {
         try {
             const applications = await this.getApplications(project);
-            return applications.map(app => app.name).sort();
+            return applications.map(app => app.name).sort((a, b) => a.localeCompare(b));
         } catch (error) {
             console.warn(`Failed to get application names: ${this.getErrorMessage(error)}`);
             return [];
@@ -299,7 +328,7 @@ export class ArgoCDServiceProvider {
     public async getProjectNames(): Promise<string[]> {
         try {
             const projects = await this.getProjects();
-            return projects.map(project => project.name).sort();
+            return projects.map(project => project.name).sort((a, b) => a.localeCompare(b));
         } catch (error) {
             console.warn(`Failed to get project names: ${this.getErrorMessage(error)}`);
             return [];
@@ -310,13 +339,10 @@ export class ArgoCDServiceProvider {
      * Get service connection credentials from Azure DevOps
      */
     private getServiceConnectionCredentials(): ArgoCDCredentials {
-        console.log(`📋 Getting credentials for service connection: ${this.connectionName}`);
+        console.log(`📋 Configuring service connection: ${this.connectionName}`);
         
         const endpointAuth = tl.getEndpointAuthorization(this.connectionName, false);
         const serverUrl = tl.getEndpointUrl(this.connectionName, false);
-
-        console.log(`📋 Server URL: ${serverUrl || 'NOT FOUND'}`);
-        console.log(`📋 Auth scheme: ${endpointAuth?.scheme || 'NOT FOUND'}`);
 
         if (!serverUrl) {
             throw new Error('ArgoCD server URL not found in service connection');
@@ -327,29 +353,7 @@ export class ArgoCDServiceProvider {
         }
 
         const authScheme = endpointAuth.scheme;
-        
-        // Check for skipCertificateValidation in multiple places
-        let skipCertValidation = false;
-        
-        // First, try to get it from endpoint data parameters
-        try {
-            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
-            if (certParam) {
-                skipCertValidation = certParam === 'true';
-                console.log(`📋 Certificate validation setting found: ${skipCertValidation}`);
-            }
-        } catch (error) {
-            // Try to get it from auth parameters as fallback
-            try {
-                const authCertParam = endpointAuth.parameters?.['skipCertificateValidation'];
-                if (authCertParam !== undefined) {
-                    skipCertValidation = authCertParam === 'true';
-                    console.log(`📋 Certificate validation from auth params: ${skipCertValidation}`);
-                }
-            } catch (authError) {
-                console.log('📋 No certificate validation setting found, using default: false');
-            }
-        }
+        const skipCertValidation = this.getCertificateValidationSetting(endpointAuth);
 
         let credentials: ArgoCDCredentials = {
             serverUrl: serverUrl,
@@ -359,16 +363,33 @@ export class ArgoCDServiceProvider {
 
         if (authScheme === 'Token') {
             credentials.apiToken = endpointAuth.parameters?.['apitoken'];
-            console.log(`📋 API Token present: ${credentials.apiToken ? 'YES' : 'NO'}`);
         } else if (authScheme === 'UsernamePassword') {
             credentials.username = endpointAuth.parameters?.['username'];
             credentials.password = endpointAuth.parameters?.['password'];
-            console.log(`📋 Username: ${credentials.username || 'NOT FOUND'}`);
-            console.log(`📋 Password present: ${credentials.password ? 'YES' : 'NO'}`);
         }
 
-        console.log(`📋 Final credentials configured with scheme: ${credentials.authScheme}`);
+        console.log(`📋 Authentication configured with scheme: ${credentials.authScheme}`);
         return credentials;
+    }
+
+    /**
+     * Get certificate validation setting from endpoint configuration
+     */
+    private getCertificateValidationSetting(endpointAuth: any): boolean {
+        // First, try to get it from endpoint data parameters
+        try {
+            const certParam = tl.getEndpointDataParameter(this.connectionName, 'skipCertificateValidation', false);
+            if (certParam !== null && certParam !== undefined) {
+                return certParam === 'true';
+            }
+        } catch {
+            // Try to get it from auth parameters as fallback
+            const authCertParam = endpointAuth.parameters?.['skipCertificateValidation'];
+            if (authCertParam !== undefined && authCertParam !== null) {
+                return authCertParam === 'true';
+            }
+        }
+        return false;
     }
 
     /**

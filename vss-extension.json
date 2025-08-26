@@ -1,20 +1,64 @@
 {
   "manifestVersion": 1,
   "id": "argocd-integration",
-  "version": "1.1.0",
+  "version": "1.4.2",
   "name": "ArgoCD Integration",
   "description": "Azure DevOps extension for seamless ArgoCD integration, providing GitOps continuous delivery from Azure Pipelines to Kubernetes clusters",
   "publisher": "vburca",
+  "public": true,
   "categories": [
     "Azure Pipelines"
   ],
+  "tags": [
+    "ArgoCD",
+    "GitOps", 
+    "Kubernetes",
+    "CD",
+    "Continuous Delivery",
+    "Deployment",
+    "K8s",
+    "DevOps",
+    "Azure Pipelines",
+    "Git"
+  ],
+  "links": {
+    "repository": {
+      "uri": "https://github.com/vasiliiburca/argocd-azure-devops-integration-extention"
+    },
+    "issues": {
+      "uri": "https://github.com/vasiliiburca/argocd-azure-devops-integration-extention/issues"  
+    },
+    "support": {
+      "uri": "https://github.com/vasiliiburca/argocd-azure-devops-integration-extention/discussions"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/vasiliiburca/argocd-azure-devops-integration-extention"
+  },
+  "badges": [
+    {
+      "href": "https://github.com/vasiliiburca/argocd-azure-devops-integration-extention",
+      "uri": "https://img.shields.io/badge/version-1.4.2-blue.svg",
+      "description": "Extension Version"
+    }
+  ],
+  "content": {
+    "details": {
+      "path": "overview.md"
+    },
+    "license": {
+      "path": "LICENSE"
+    }
+  },
   "targets": [
     {
       "id": "Microsoft.VisualStudio.Services"
     }
   ],
   "icons": {
-    "default": "icon.png"
+    "default": "icon.png",
+    "service-endpoint": "service-endpoint/extention_service_connection.png"
   },
   "scopes": [
     "vso.serviceendpoint_manage"
@@ -28,8 +72,9 @@
         "ms.vss-endpoint.endpoint-types"
       ],
       "properties": {
-        "name": "argocd",
-        "displayName": "ArgoCD",
+        "name": "vburca-argocd",
+        "displayName": "ArgoCD Integration",
+        "icon": "service-endpoint/extention_service_connection.png",
         "url": {
           "displayName": "ArgoCD Server URL",
           "helpText": "URL of the ArgoCD server (e.g., https://argocd.example.com)",
@@ -96,8 +141,8 @@
           },
           {
             "name": "ArgoCDApplications",
-            "endpointUrl": "{{endpoint.url}}api/v1/applications",
-            "resultSelector": "jsonpath:$.items[*].metadata.name",
+            "endpointUrl": "{{endpoint.url}}api/v1/applications{{#project}}?project={{project}}{{/project}}",
+            "resultSelector": "jsonpath:$.items[?(@.spec.project=='{{project}}' || '{{project}}'=='')].metadata.name",
             "resultTemplate": "{\"Value\" : \"{{{defaultResultKey}}}\", \"DisplayValue\" : \"{{{defaultResultKey}}}\"}",
             "headers": [
               {
@@ -175,6 +220,14 @@
     },
     {
       "path": "icon.png",
+      "addressable": true
+    },
+    {
+      "path": "overview.md",
+      "addressable": true
+    },
+    {
+      "path": "README.md",
       "addressable": true
     }
   ]

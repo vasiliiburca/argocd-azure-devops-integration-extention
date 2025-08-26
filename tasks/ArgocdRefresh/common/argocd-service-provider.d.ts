@@ -12,8 +12,18 @@ export interface ArgoCDApplication {
     namespace?: string;
     server?: string;
     syncStatus: string;
+    lastSyncStatus?: string;
     healthStatus: string;
     revision?: string;
+    operationState?: object;
+    conditions?: Array<{
+        type: string;
+        status: string;
+        severity?: string;
+        message: string;
+        reason?: string;
+        lastTransitionTime?: string;
+    }>;
 }
 export interface ArgoCDProject {
     name: string;
@@ -103,6 +113,10 @@ export declare class ArgoCDServiceProvider {
      * Get service connection credentials from Azure DevOps
      */
     private getServiceConnectionCredentials;
+    /**
+     * Get certificate validation setting from endpoint configuration
+     */
+    private getCertificateValidationSetting;
     /**
      * Validate that we have the required credentials
      */

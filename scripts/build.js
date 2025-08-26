@@ -108,7 +108,7 @@ const taskPackageConfigs = [
         name: 'ArgocdSync',
         content: {
             "name": "argocd-sync-task",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "description": "ArgoCD Application Sync Task Runtime",
             "main": "index.js",
             "dependencies": {
@@ -123,7 +123,7 @@ const taskPackageConfigs = [
         name: 'ArgocdRefresh',
         content: {
             "name": "argocd-refresh-task",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "description": "ArgoCD Application Refresh Task Runtime",
             "main": "index.js",
             "dependencies": {

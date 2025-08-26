@@ -2,18 +2,19 @@
     "id": "b2c3d4e5-6f7a-890b-cdef-012345678901",
     "name": "ArgocdRefresh",
     "friendlyName": "ArgoCD Application Refresh",
-    "description": "Refresh an ArgoCD application to detect changes from Git and optionally wait for auto-sync",
-    "helpMarkDown": "This task refreshes an ArgoCD application to detect changes from the Git repository. If changes are detected and auto-sync is enabled, it can wait for the sync to complete. [More Information](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/)",
+    "description": "Refresh an ArgoCD application with comprehensive status monitoring and health validation",
+    "helpMarkDown": "This task refreshes an ArgoCD application to detect changes from Git, monitors sync operations, validates application health, and checks for error/warning conditions. Provides intelligent handling of Unknown sync status and manifest errors. [More Information](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/)",
     "category": "Deploy",
     "author": "vburca",
     "demands": [],
     "version": {
         "Major": "1",
-        "Minor": "0",
-        "Patch": "0"
+        "Minor": "2",
+        "Patch": "7"
     },
     "minimumAgentVersion": "2.144.0",
     "instanceNameFormat": "ArgoCD Refresh: $(applicationName)",
+    "icon": "icon.png",
     "groups": [
         {
             "name": "connection",
@@ -39,7 +40,7 @@
     "inputs": [
         {
             "name": "argoCDConnection",
-            "type": "connectedService:argocd",
+            "type": "connectedService:vburca-argocd",
             "label": "ArgoCD Service Connection",
             "defaultValue": "",
             "required": true,
@@ -47,24 +48,24 @@
             "groupName": "connection"
         },
         {
-            "name": "applicationName",
+            "name": "project",
             "type": "pickList",
-            "label": "Application Name",
+            "label": "Project (Optional)",
             "defaultValue": "",
-            "required": true,
-            "helpMarkDown": "The ArgoCD application to refresh. The dropdown is populated from your ArgoCD server.",
+            "required": false,
+            "helpMarkDown": "ArgoCD project name. If specified, only applications from this project will be shown in the Application dropdown.",
             "groupName": "application",
             "properties": {
                 "EditableOptions": "True"
             }
         },
         {
-            "name": "project",
+            "name": "applicationName",
             "type": "pickList",
-            "label": "Project (Optional)",
+            "label": "Application Name",
             "defaultValue": "",
-            "required": false,
-            "helpMarkDown": "ArgoCD project name. If specified, the application must belong to this project.",
+            "required": true,
+            "helpMarkDown": "The ArgoCD application to refresh. The dropdown is populated based on the selected project.",
             "groupName": "application",
             "properties": {
                 "EditableOptions": "True"
@@ -89,6 +90,15 @@
             "groupName": "refresh"
         },
         {
+            "name": "terminateRunningSync",
+            "type": "boolean",
+            "label": "Terminate running sync before refresh",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "If a sync operation is already running, terminate it before performing the refresh. Use with caution in production environments.",
+            "groupName": "refresh"
+        },
+        {
             "name": "syncTimeout",
             "type": "string",
             "label": "Auto-sync Timeout (seconds)",
@@ -97,13 +107,43 @@
             "helpMarkDown": "Maximum time to wait for auto-sync completion. Only applies if 'Wait for auto-sync' is enabled and changes are detected.",
             "groupName": "refresh",
             "visibleRule": "waitForChanges = true"
+        },
+        {
+            "name": "failOnWarnings",
+            "type": "boolean",
+            "label": "Fail on Warning Conditions",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Fail the task if the application has warning conditions. When disabled, warnings are logged but don't fail the task.",
+            "groupName": "advanced"
+        },
+        {
+            "name": "failOnDegraded",
+            "type": "boolean",
+            "label": "Fail on Degraded Health",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "Fail the task if the application health status is 'Degraded'. Recommended for production environments.",
+            "groupName": "advanced"
+        },
+        {
+            "name": "failOnUnknown",
+            "type": "boolean",
+            "label": "Fail on Unknown Sync Status",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Fail the task if the application sync status is 'Unknown'. Unknown status often indicates manifest errors or configuration issues.",
+            "groupName": "advanced"
         }
     ],
     "dataSourceBindings": [
         {
             "target": "applicationName",
             "endpointId": "$(argoCDConnection)",
-            "dataSourceName": "ArgoCDApplications"
+            "dataSourceName": "ArgoCDApplications",
+            "parameters": {
+                "project": "$(project)"
+            }
         },
         {
             "target": "project",
