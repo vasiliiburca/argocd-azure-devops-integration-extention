@@ -198,13 +198,27 @@ async function performRefresh(argoCDService, applicationName, _project, hard = f
     var _a, _b;
     console.log(`🔄 Triggering ${hard ? 'hard ' : ''}refresh operation...`);
     const httpClient = argoCDService.createHttpClient();
-    // ArgoCD API format is always /api/v1/applications/{appName}
-    // Project validation is handled by the service provider
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}?refresh=${hard ? 'hard' : 'normal'}`;
-    console.log(`   Original app name: '${applicationName}'`);
-    console.log(`   Encoded app name: '${encodedAppName}'`);
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace;
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+            console.log(`📝 Parsed CLI-style format: namespace='${appNamespace}', name='${appName}'`);
+        }
+    }
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}?refresh=${hard ? 'hard' : 'normal'}`;
+    if (appNamespace) {
+        url += `&appNamespace=${appNamespace}`;
+    }
+    console.log(`   Original input: '${applicationName}'`);
+    console.log(`   App name: '${appName}'`);
+    if (appNamespace) {
+        console.log(`   App namespace: '${appNamespace}'`);
+    }
     console.log(`   Request URL: ${url}`);
     try {
         const response = await httpClient.get(url);
@@ -507,9 +521,21 @@ async function checkForRunningOperation(argoCDService, applicationName) {
     var _a, _b;
     console.log('🔍 Checking for running operations...');
     const httpClient = argoCDService.createHttpClient();
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}`;
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace;
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+        }
+    }
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}`;
+    if (appNamespace) {
+        url += `?appNamespace=${appNamespace}`;
+    }
     try {
         const response = await httpClient.get(url);
         const app = response.data;
@@ -546,9 +572,21 @@ async function terminateSync(argoCDService, applicationName, _project) {
     var _a, _b, _c;
     console.log('🛑 Terminating running sync operation...');
     const httpClient = argoCDService.createHttpClient();
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}/operation`;
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace;
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+        }
+    }
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}/operation`;
+    if (appNamespace) {
+        url += `?appNamespace=${appNamespace}`;
+    }
     console.log(`   Request URL: ${url}`);
     try {
         const response = await httpClient.delete(url);

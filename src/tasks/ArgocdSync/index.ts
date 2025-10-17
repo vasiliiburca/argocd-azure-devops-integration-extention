@@ -175,12 +175,30 @@ async function performSync(
         syncRequest.strategy = { force: true };
     }
 
-    // ArgoCD API format is always /api/v1/applications/{appName}/sync
-    // Project validation is handled by the service provider
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}/sync`;
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace: string | undefined;
 
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+            console.log(`📝 Parsed CLI-style format: namespace='${appNamespace}', name='${appName}'`);
+        }
+    }
+
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}/sync`;
+    if (appNamespace) {
+        url += `?appNamespace=${appNamespace}`;
+    }
+
+    console.log(`   Original input: '${applicationName}'`);
+    console.log(`   App name: '${appName}'`);
+    if (appNamespace) {
+        console.log(`   App namespace: '${appNamespace}'`);
+    }
     console.log(`   Request URL: ${url}`);
     console.log(`   Sync options: ${options.strategy} strategy, prune=${options.prune}, dryRun=${options.dryRun}`);
 
@@ -202,20 +220,32 @@ async function performSync(
 }
 
 async function performRefresh(
-    argoCDService: ArgoCDServiceProvider, 
-    applicationName: string, 
-    _project: string | undefined, 
+    argoCDService: ArgoCDServiceProvider,
+    applicationName: string,
+    _project: string | undefined,
     hard: boolean = false
 ) {
     console.log(`🔄 Triggering ${hard ? 'hard ' : ''}refresh operation...`);
-    
+
     const httpClient = argoCDService.createHttpClient();
-    
-    // ArgoCD API format is always /api/v1/applications/{appName}
-    // Project validation is handled by the service provider
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}?refresh=${hard ? 'hard' : 'normal'}`;
+
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace: string | undefined;
+
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+        }
+    }
+
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}?refresh=${hard ? 'hard' : 'normal'}`;
+    if (appNamespace) {
+        url += `&appNamespace=${appNamespace}`;
+    }
 
     console.log(`   Request URL: ${url}`);
 
@@ -332,11 +362,26 @@ async function checkForRunningOperation(argoCDService: ArgoCDServiceProvider, ap
     console.log('🔍 Checking for running operations...');
 
     const httpClient = argoCDService.createHttpClient();
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}`;
 
-    try{
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace: string | undefined;
+
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+        }
+    }
+
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}`;
+    if (appNamespace) {
+        url += `?appNamespace=${appNamespace}`;
+    }
+
+    try {
         const response = await httpClient.get(url);
         const app = response.data;
         
@@ -373,9 +418,24 @@ async function terminateSync(argoCDService: ArgoCDServiceProvider, applicationNa
     console.log('🛑 Terminating running sync operation...');
 
     const httpClient = argoCDService.createHttpClient();
-    // Encode the application name to handle special characters like '/'
-    const encodedAppName = encodeURIComponent(applicationName);
-    const url = `/api/v1/applications/${encodedAppName}/operation`;
+
+    // Parse namespace/name format (CLI-style) if present
+    let appName = applicationName;
+    let appNamespace: string | undefined;
+
+    if (applicationName.includes('/')) {
+        const parts = applicationName.split('/');
+        if (parts.length === 2) {
+            appNamespace = parts[0];
+            appName = parts[1];
+        }
+    }
+
+    // Build URL with appNamespace query parameter if needed
+    let url = `/api/v1/applications/${appName}/operation`;
+    if (appNamespace) {
+        url += `?appNamespace=${appNamespace}`;
+    }
 
     console.log(`   Request URL: ${url}`);
     

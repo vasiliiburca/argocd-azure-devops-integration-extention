@@ -183,21 +183,38 @@ class ArgoCDServiceProvider {
     }
     /**
      * Get detailed information about a specific application
+     *
+     * Supports CLI-style namespace/name format (e.g., "development/crm-backend")
+     * or plain name format (e.g., "crm-backend")
      */
     async getApplication(applicationName, project) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7;
         if (!this.httpClient) {
             throw new Error('Service provider not initialized');
         }
-        // Encode the application name to handle special characters like '/'
-        const encodedAppName = encodeURIComponent(applicationName);
-        const url = `/api/v1/applications/${encodedAppName}`;
+        // Parse namespace/name format (CLI-style) if present
+        let appName = applicationName;
+        let appNamespace;
+        if (applicationName.includes('/')) {
+            const parts = applicationName.split('/');
+            if (parts.length === 2) {
+                appNamespace = parts[0];
+                appName = parts[1];
+                console.log(`📝 Parsed CLI-style format: namespace='${appNamespace}', name='${appName}'`);
+            }
+        }
+        // Build URL with appNamespace query parameter if needed
+        let url = `/api/v1/applications/${appName}`;
+        if (appNamespace) {
+            url += `?appNamespace=${appNamespace}`;
+        }
         try {
-            // ArgoCD API format is always /api/v1/applications/{appName}
-            // Project filtering is done by checking the application spec
             console.log(`🔗 API Request: GET ${url}`);
-            console.log(`   Original app name: '${applicationName}'`);
-            console.log(`   Encoded app name: '${encodedAppName}'`);
+            console.log(`   Original input: '${applicationName}'`);
+            console.log(`   App name: '${appName}'`);
+            if (appNamespace) {
+                console.log(`   App namespace: '${appNamespace}'`);
+            }
             const response = await this.httpClient.get(url);
             const app = response.data;
             // If project is specified, verify the application belongs to that project
@@ -208,7 +225,7 @@ class ArgoCDServiceProvider {
                 }
             }
             return {
-                name: ((_d = app.metadata) === null || _d === void 0 ? void 0 : _d.name) || applicationName,
+                name: ((_d = app.metadata) === null || _d === void 0 ? void 0 : _d.name) || appName,
                 project: ((_e = app.spec) === null || _e === void 0 ? void 0 : _e.project) || 'default',
                 namespace: (_g = (_f = app.spec) === null || _f === void 0 ? void 0 : _f.destination) === null || _g === void 0 ? void 0 : _g.namespace,
                 server: (_j = (_h = app.spec) === null || _h === void 0 ? void 0 : _h.destination) === null || _j === void 0 ? void 0 : _j.server,

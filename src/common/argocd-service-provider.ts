@@ -221,22 +221,41 @@ export class ArgoCDServiceProvider {
 
     /**
      * Get detailed information about a specific application
+     *
+     * Supports CLI-style namespace/name format (e.g., "development/crm-backend")
+     * or plain name format (e.g., "crm-backend")
      */
     public async getApplication(applicationName: string, project?: string): Promise<ArgoCDApplication> {
         if (!this.httpClient) {
             throw new Error('Service provider not initialized');
         }
 
-        // Encode the application name to handle special characters like '/'
-        const encodedAppName = encodeURIComponent(applicationName);
-        const url = `/api/v1/applications/${encodedAppName}`;
+        // Parse namespace/name format (CLI-style) if present
+        let appName = applicationName;
+        let appNamespace: string | undefined;
+
+        if (applicationName.includes('/')) {
+            const parts = applicationName.split('/');
+            if (parts.length === 2) {
+                appNamespace = parts[0];
+                appName = parts[1];
+                console.log(`📝 Parsed CLI-style format: namespace='${appNamespace}', name='${appName}'`);
+            }
+        }
+
+        // Build URL with appNamespace query parameter if needed
+        let url = `/api/v1/applications/${appName}`;
+        if (appNamespace) {
+            url += `?appNamespace=${appNamespace}`;
+        }
 
         try {
-            // ArgoCD API format is always /api/v1/applications/{appName}
-            // Project filtering is done by checking the application spec
             console.log(`🔗 API Request: GET ${url}`);
-            console.log(`   Original app name: '${applicationName}'`);
-            console.log(`   Encoded app name: '${encodedAppName}'`);
+            console.log(`   Original input: '${applicationName}'`);
+            console.log(`   App name: '${appName}'`);
+            if (appNamespace) {
+                console.log(`   App namespace: '${appNamespace}'`);
+            }
 
             const response = await this.httpClient.get(url);
             const app = response.data;
@@ -248,17 +267,17 @@ export class ArgoCDServiceProvider {
                     throw new Error(`Application '${applicationName}' not found in project '${project}' (actual project: '${app.spec?.project}')`);
                 }
             }
-            
+
             return {
-                name: app.metadata?.name || applicationName,
+                name: app.metadata?.name || appName,
                 project: app.spec?.project || 'default',
                 namespace: app.spec?.destination?.namespace,
                 server: app.spec?.destination?.server,
                 syncStatus: app.status?.sync?.status || 'Unknown',
-                lastSyncStatus: app.status?.operationState?.phase === 'Succeeded' ? 'Synced' : 
+                lastSyncStatus: app.status?.operationState?.phase === 'Succeeded' ? 'Synced' :
                               app.status?.operationState?.phase === 'Failed' ? 'Failed' :
                               app.status?.operationState?.phase === 'Error' ? 'Error' :
-                              app.status?.operationState?.syncResult?.status || 
+                              app.status?.operationState?.syncResult?.status ||
                               app.status?.sync?.status || 'Unknown',
                 healthStatus: app.status?.health?.status || 'Unknown',
                 revision: app.status?.sync?.revision,

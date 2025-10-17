@@ -90,6 +90,9 @@ export declare class ArgoCDServiceProvider {
     getProjects(): Promise<ArgoCDProject[]>;
     /**
      * Get detailed information about a specific application
+     *
+     * Supports CLI-style namespace/name format (e.g., "development/crm-backend")
+     * or plain name format (e.g., "crm-backend")
      */
     getApplication(applicationName: string, project?: string): Promise<ArgoCDApplication>;
     /**

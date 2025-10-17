@@ -1,6 +1,6 @@
 {
   "name": "argocd-azure-devops-extension",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Azure DevOps extension for ArgoCD integration",
   "main": "index.js",
   "scripts": {
