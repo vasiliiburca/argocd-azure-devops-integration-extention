@@ -234,12 +234,19 @@ export class ArgoCDServiceProvider {
             const encodedAppName = encodeURIComponent(applicationName);
             const url = `/api/v1/applications/${encodedAppName}`;
 
+            console.log(`🔗 API Request: GET ${url}`);
+            console.log(`   Original app name: '${applicationName}'`);
+            console.log(`   Encoded app name: '${encodedAppName}'`);
+
             const response = await this.httpClient.get(url);
             const app = response.data;
-            
+
             // If project is specified, verify the application belongs to that project
-            if (project && app.spec?.project !== project) {
-                throw new Error(`Application '${applicationName}' not found in project '${project}'`);
+            if (project) {
+                console.log(`🔍 Project validation: expected='${project}', actual='${app.spec?.project}'`);
+                if (app.spec?.project !== project) {
+                    throw new Error(`Application '${applicationName}' not found in project '${project}' (actual project: '${app.spec?.project}')`);
+                }
             }
             
             return {
@@ -259,8 +266,14 @@ export class ArgoCDServiceProvider {
                 conditions: app.status?.conditions || []
             };
         } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                throw new Error(`Application '${applicationName}' not found`);
+            if (axios.isAxiosError(error)) {
+                console.log(`❌ API Error: ${error.response?.status} ${error.response?.statusText}`);
+                console.log(`   URL that failed: ${url}`);
+                console.log(`   Response: ${JSON.stringify(error.response?.data)}`);
+
+                if (error.response?.status === 404) {
+                    throw new Error(`Application '${applicationName}' not found`);
+                }
             }
             throw new Error(`Failed to get application '${applicationName}': ${this.getErrorMessage(error)}`);
         }
