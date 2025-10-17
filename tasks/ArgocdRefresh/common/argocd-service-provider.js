@@ -185,42 +185,53 @@ class ArgoCDServiceProvider {
      * Get detailed information about a specific application
      */
     async getApplication(applicationName, project) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7;
         if (!this.httpClient) {
             throw new Error('Service provider not initialized');
         }
+        // Encode the application name to handle special characters like '/'
+        const encodedAppName = encodeURIComponent(applicationName);
+        const url = `/api/v1/applications/${encodedAppName}`;
         try {
             // ArgoCD API format is always /api/v1/applications/{appName}
             // Project filtering is done by checking the application spec
-            // Encode the application name to handle special characters like '/'
-            const encodedAppName = encodeURIComponent(applicationName);
-            const url = `/api/v1/applications/${encodedAppName}`;
+            console.log(`🔗 API Request: GET ${url}`);
+            console.log(`   Original app name: '${applicationName}'`);
+            console.log(`   Encoded app name: '${encodedAppName}'`);
             const response = await this.httpClient.get(url);
             const app = response.data;
             // If project is specified, verify the application belongs to that project
-            if (project && ((_a = app.spec) === null || _a === void 0 ? void 0 : _a.project) !== project) {
-                throw new Error(`Application '${applicationName}' not found in project '${project}'`);
+            if (project) {
+                console.log(`🔍 Project validation: expected='${project}', actual='${(_a = app.spec) === null || _a === void 0 ? void 0 : _a.project}'`);
+                if (((_b = app.spec) === null || _b === void 0 ? void 0 : _b.project) !== project) {
+                    throw new Error(`Application '${applicationName}' not found in project '${project}' (actual project: '${(_c = app.spec) === null || _c === void 0 ? void 0 : _c.project}')`);
+                }
             }
             return {
-                name: ((_b = app.metadata) === null || _b === void 0 ? void 0 : _b.name) || applicationName,
-                project: ((_c = app.spec) === null || _c === void 0 ? void 0 : _c.project) || 'default',
-                namespace: (_e = (_d = app.spec) === null || _d === void 0 ? void 0 : _d.destination) === null || _e === void 0 ? void 0 : _e.namespace,
-                server: (_g = (_f = app.spec) === null || _f === void 0 ? void 0 : _f.destination) === null || _g === void 0 ? void 0 : _g.server,
-                syncStatus: ((_j = (_h = app.status) === null || _h === void 0 ? void 0 : _h.sync) === null || _j === void 0 ? void 0 : _j.status) || 'Unknown',
-                lastSyncStatus: ((_l = (_k = app.status) === null || _k === void 0 ? void 0 : _k.operationState) === null || _l === void 0 ? void 0 : _l.phase) === 'Succeeded' ? 'Synced' :
-                    ((_o = (_m = app.status) === null || _m === void 0 ? void 0 : _m.operationState) === null || _o === void 0 ? void 0 : _o.phase) === 'Failed' ? 'Failed' :
-                        ((_q = (_p = app.status) === null || _p === void 0 ? void 0 : _p.operationState) === null || _q === void 0 ? void 0 : _q.phase) === 'Error' ? 'Error' :
-                            ((_t = (_s = (_r = app.status) === null || _r === void 0 ? void 0 : _r.operationState) === null || _s === void 0 ? void 0 : _s.syncResult) === null || _t === void 0 ? void 0 : _t.status) ||
-                                ((_v = (_u = app.status) === null || _u === void 0 ? void 0 : _u.sync) === null || _v === void 0 ? void 0 : _v.status) || 'Unknown',
-                healthStatus: ((_x = (_w = app.status) === null || _w === void 0 ? void 0 : _w.health) === null || _x === void 0 ? void 0 : _x.status) || 'Unknown',
-                revision: (_z = (_y = app.status) === null || _y === void 0 ? void 0 : _y.sync) === null || _z === void 0 ? void 0 : _z.revision,
-                operationState: (_0 = app.status) === null || _0 === void 0 ? void 0 : _0.operationState,
-                conditions: ((_1 = app.status) === null || _1 === void 0 ? void 0 : _1.conditions) || []
+                name: ((_d = app.metadata) === null || _d === void 0 ? void 0 : _d.name) || applicationName,
+                project: ((_e = app.spec) === null || _e === void 0 ? void 0 : _e.project) || 'default',
+                namespace: (_g = (_f = app.spec) === null || _f === void 0 ? void 0 : _f.destination) === null || _g === void 0 ? void 0 : _g.namespace,
+                server: (_j = (_h = app.spec) === null || _h === void 0 ? void 0 : _h.destination) === null || _j === void 0 ? void 0 : _j.server,
+                syncStatus: ((_l = (_k = app.status) === null || _k === void 0 ? void 0 : _k.sync) === null || _l === void 0 ? void 0 : _l.status) || 'Unknown',
+                lastSyncStatus: ((_o = (_m = app.status) === null || _m === void 0 ? void 0 : _m.operationState) === null || _o === void 0 ? void 0 : _o.phase) === 'Succeeded' ? 'Synced' :
+                    ((_q = (_p = app.status) === null || _p === void 0 ? void 0 : _p.operationState) === null || _q === void 0 ? void 0 : _q.phase) === 'Failed' ? 'Failed' :
+                        ((_s = (_r = app.status) === null || _r === void 0 ? void 0 : _r.operationState) === null || _s === void 0 ? void 0 : _s.phase) === 'Error' ? 'Error' :
+                            ((_v = (_u = (_t = app.status) === null || _t === void 0 ? void 0 : _t.operationState) === null || _u === void 0 ? void 0 : _u.syncResult) === null || _v === void 0 ? void 0 : _v.status) ||
+                                ((_x = (_w = app.status) === null || _w === void 0 ? void 0 : _w.sync) === null || _x === void 0 ? void 0 : _x.status) || 'Unknown',
+                healthStatus: ((_z = (_y = app.status) === null || _y === void 0 ? void 0 : _y.health) === null || _z === void 0 ? void 0 : _z.status) || 'Unknown',
+                revision: (_1 = (_0 = app.status) === null || _0 === void 0 ? void 0 : _0.sync) === null || _1 === void 0 ? void 0 : _1.revision,
+                operationState: (_2 = app.status) === null || _2 === void 0 ? void 0 : _2.operationState,
+                conditions: ((_3 = app.status) === null || _3 === void 0 ? void 0 : _3.conditions) || []
             };
         }
         catch (error) {
-            if (axios_1.default.isAxiosError(error) && ((_2 = error.response) === null || _2 === void 0 ? void 0 : _2.status) === 404) {
-                throw new Error(`Application '${applicationName}' not found`);
+            if (axios_1.default.isAxiosError(error)) {
+                console.log(`❌ API Error: ${(_4 = error.response) === null || _4 === void 0 ? void 0 : _4.status} ${(_5 = error.response) === null || _5 === void 0 ? void 0 : _5.statusText}`);
+                console.log(`   URL that failed: ${url}`);
+                console.log(`   Response: ${JSON.stringify((_6 = error.response) === null || _6 === void 0 ? void 0 : _6.data)}`);
+                if (((_7 = error.response) === null || _7 === void 0 ? void 0 : _7.status) === 404) {
+                    throw new Error(`Application '${applicationName}' not found`);
+                }
             }
             throw new Error(`Failed to get application '${applicationName}': ${this.getErrorMessage(error)}`);
         }

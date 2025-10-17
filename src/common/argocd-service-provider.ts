@@ -227,13 +227,13 @@ export class ArgoCDServiceProvider {
             throw new Error('Service provider not initialized');
         }
 
+        // Encode the application name to handle special characters like '/'
+        const encodedAppName = encodeURIComponent(applicationName);
+        const url = `/api/v1/applications/${encodedAppName}`;
+
         try {
             // ArgoCD API format is always /api/v1/applications/{appName}
             // Project filtering is done by checking the application spec
-            // Encode the application name to handle special characters like '/'
-            const encodedAppName = encodeURIComponent(applicationName);
-            const url = `/api/v1/applications/${encodedAppName}`;
-
             console.log(`🔗 API Request: GET ${url}`);
             console.log(`   Original app name: '${applicationName}'`);
             console.log(`   Encoded app name: '${encodedAppName}'`);

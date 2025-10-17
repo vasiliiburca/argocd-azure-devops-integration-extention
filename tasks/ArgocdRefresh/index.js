@@ -203,6 +203,8 @@ async function performRefresh(argoCDService, applicationName, _project, hard = f
     // Encode the application name to handle special characters like '/'
     const encodedAppName = encodeURIComponent(applicationName);
     const url = `/api/v1/applications/${encodedAppName}?refresh=${hard ? 'hard' : 'normal'}`;
+    console.log(`   Original app name: '${applicationName}'`);
+    console.log(`   Encoded app name: '${encodedAppName}'`);
     console.log(`   Request URL: ${url}`);
     try {
         const response = await httpClient.get(url);
