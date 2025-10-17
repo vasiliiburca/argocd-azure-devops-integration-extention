@@ -230,8 +230,10 @@ export class ArgoCDServiceProvider {
         try {
             // ArgoCD API format is always /api/v1/applications/{appName}
             // Project filtering is done by checking the application spec
-            const url = `/api/v1/applications/${applicationName}`;
-            
+            // Encode the application name to handle special characters like '/'
+            const encodedAppName = encodeURIComponent(applicationName);
+            const url = `/api/v1/applications/${encodedAppName}`;
+
             const response = await this.httpClient.get(url);
             const app = response.data;
             

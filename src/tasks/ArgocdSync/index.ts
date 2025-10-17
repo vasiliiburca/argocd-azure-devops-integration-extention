@@ -177,7 +177,9 @@ async function performSync(
 
     // ArgoCD API format is always /api/v1/applications/{appName}/sync
     // Project validation is handled by the service provider
-    const url = `/api/v1/applications/${applicationName}/sync`;
+    // Encode the application name to handle special characters like '/'
+    const encodedAppName = encodeURIComponent(applicationName);
+    const url = `/api/v1/applications/${encodedAppName}/sync`;
 
     console.log(`   Request URL: ${url}`);
     console.log(`   Sync options: ${options.strategy} strategy, prune=${options.prune}, dryRun=${options.dryRun}`);
@@ -210,8 +212,10 @@ async function performRefresh(
     const httpClient = argoCDService.createHttpClient();
     
     // ArgoCD API format is always /api/v1/applications/{appName}
-    // Project validation is handled by the service provider  
-    const url = `/api/v1/applications/${applicationName}?refresh=${hard ? 'hard' : 'normal'}`;
+    // Project validation is handled by the service provider
+    // Encode the application name to handle special characters like '/'
+    const encodedAppName = encodeURIComponent(applicationName);
+    const url = `/api/v1/applications/${encodedAppName}?refresh=${hard ? 'hard' : 'normal'}`;
 
     console.log(`   Request URL: ${url}`);
 
@@ -326,11 +330,13 @@ async function waitForSyncCompletion(
 
 async function checkForRunningOperation(argoCDService: ArgoCDServiceProvider, applicationName: string): Promise<boolean> {
     console.log('🔍 Checking for running operations...');
-    
+
     const httpClient = argoCDService.createHttpClient();
-    const url = `/api/v1/applications/${applicationName}`;
-    
-    try {
+    // Encode the application name to handle special characters like '/'
+    const encodedAppName = encodeURIComponent(applicationName);
+    const url = `/api/v1/applications/${encodedAppName}`;
+
+    try{
         const response = await httpClient.get(url);
         const app = response.data;
         
@@ -365,10 +371,12 @@ async function checkForRunningOperation(argoCDService: ArgoCDServiceProvider, ap
 
 async function terminateSync(argoCDService: ArgoCDServiceProvider, applicationName: string, _project?: string): Promise<void> {
     console.log('🛑 Terminating running sync operation...');
-    
+
     const httpClient = argoCDService.createHttpClient();
-    const url = `/api/v1/applications/${applicationName}/operation`;
-    
+    // Encode the application name to handle special characters like '/'
+    const encodedAppName = encodeURIComponent(applicationName);
+    const url = `/api/v1/applications/${encodedAppName}/operation`;
+
     console.log(`   Request URL: ${url}`);
     
     try {
